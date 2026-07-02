@@ -12,10 +12,8 @@ Guiding principle, applied everywhere: **easy to change, impossible to change in
 
 The self-healing loop is the differentiator. Natural-language agent creation is the on-ramp (table stakes), not the product.
 
-Authoritative design docs (read these for any non-trivial change):
-- `docs/kaula-architecture.md` — system architecture
+Authoritative design doc (read it for any non-trivial change):
 - `docs/kaula-oss-architecture.md` — package layout and the open/commercial seam
-- `docs/kaula-mvp.md` — strategy, scope, compliance, research sourcing
 
 ---
 
