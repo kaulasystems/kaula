@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kaula-self-healing"
+version = "0.1.0"
+description = "Reference implementation of the Kaula self-healing loop"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = ["kaula-core>=0.1,<0.2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kaula"]
