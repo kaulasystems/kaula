@@ -11,5 +11,13 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 dependencies = ["kaula-core>=0.1,<0.2"]
 
+[project.optional-dependencies]
+llm = ["anthropic>=0.40"]
+
+# Install-time registration (resolved by kaula.core.Registry; config overrides)
+[project.entry-points."kaula.implementations"]
+scanner = "kaula.self_healing:BasicStaticScanner"
+repairagent = "kaula.self_healing:LLMRepairAgent"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/kaula"]

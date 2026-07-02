@@ -12,6 +12,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from kaula.core import ToolFailure, ToolTest, ToolVersion
+from kaula.runtime.pause import PauseRecord, SqlitePauseLedger
 from kaula.self_healing import SelfHealingLoop
 
 __all__ = ["HealingToolWrapper", "ToolHealingPausedError"]
@@ -21,13 +22,16 @@ class ToolHealingPausedError(RuntimeError):
     """Healing failed within budget: the tool is unchanged and the run must
     stay paused for a human. Deliberately not swallowed anywhere."""
 
-    def __init__(self, tool_name: str, reason: str) -> None:
+    def __init__(
+        self, tool_name: str, reason: str, *, pause_record: PauseRecord | None = None
+    ) -> None:
         super().__init__(
             f"tool {tool_name!r} failed and could not be healed ({reason}); "
             f"run paused for human review"
         )
         self.tool_name = tool_name
         self.reason = reason
+        self.pause_record = pause_record
 
 
 class HealingToolWrapper:
@@ -50,6 +54,7 @@ class HealingToolWrapper:
         entrypoint: str | None = None,
         run_id: str | None = None,
         on_swap: Callable[[ToolVersion], None] | None = None,
+        pause_ledger: SqlitePauseLedger | None = None,
     ) -> None:
         if source is None:
             source = textwrap.dedent(inspect.getsource(func))
@@ -60,6 +65,7 @@ class HealingToolWrapper:
         self._tests = tuple(tests)
         self._run_id = run_id
         self._on_swap = on_swap
+        self._pause_ledger = pause_ledger
         self.version = ToolVersion.initial(tool_name, entrypoint, source)
 
     @property
@@ -79,7 +85,17 @@ class HealingToolWrapper:
             )
             outcome = self._loop.heal(failure, self.version, self._tests, apply_swap=self._swap)
             if not outcome.healed:
-                raise ToolHealingPausedError(self.tool_name, outcome.reason) from exc
+                record = None
+                if self._pause_ledger is not None:
+                    record = self._pause_ledger.record_pause(
+                        tool_name=self.tool_name,
+                        failure_id=failure.failure_id,
+                        reason=outcome.reason,
+                        run_id=self._run_id,
+                    )
+                raise ToolHealingPausedError(
+                    self.tool_name, outcome.reason, pause_record=record
+                ) from exc
             return self._func(*args, **kwargs)
 
     def _swap(self, version: ToolVersion) -> None:

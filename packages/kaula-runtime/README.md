@@ -18,5 +18,13 @@ points only — never vendored, never patched.
   paused, tool unchanged).
 - `kaula.runtime.crewai_adapter.heal_crewai_tool` — wraps a CrewAI
   `BaseTool` in that hook by composition.
+- `kaula.runtime.SqlitePauseLedger` — durable record of paused runs: one
+  entry per unhealed failure (mirrored to the audit trail), resolved
+  explicitly when a human ships a fix, rolls back, or abandons the run.
+- `kaula.runtime.crewai_adapter.kickoff_with_healing` /
+  `resume_paused_run` — run a Crew under pause-on-failure semantics and
+  resume it after human intervention. Honest boundary: CrewAI exposes no
+  mid-task state capture, so resume re-kickoffs the crew against the fixed
+  tool — safe because the pause fired before any partial result committed.
 
 Maturity: `[MVP]`.

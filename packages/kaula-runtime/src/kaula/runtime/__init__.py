@@ -7,6 +7,13 @@ explicitly by users:
     from kaula.runtime.crewai_adapter import heal_crewai_tool
 """
 
+from kaula.runtime.pause import PauseRecord, SqlitePauseLedger, UnknownPauseError
 from kaula.runtime.wrapper import HealingToolWrapper, ToolHealingPausedError
 
-__all__ = ["HealingToolWrapper", "ToolHealingPausedError"]
+__all__ = [
+    "HealingToolWrapper",
+    "PauseRecord",
+    "SqlitePauseLedger",
+    "ToolHealingPausedError",
+    "UnknownPauseError",
+]

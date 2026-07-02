@@ -8,6 +8,16 @@ audit → curate memory.
 Deliberately framework-agnostic: no CrewAI, no concrete implementation
 imports — every dependency is a `kaula.core` Protocol injected at
 construction, so the loop is fully unit-testable with fakes.
+`SelfHealingLoop.from_registry(...)` assembles the loop through the
+`kaula.core.Registry` swap mechanism (inject > config > installed packages >
+default) instead of explicit construction.
+
+Also ships `LLMRepairAgent`, the reference `RepairAgent` backed by Claude
+(optional dependency: `pip install "kaula-self-healing[llm]"`). The loop
+never trusts it: whatever it proposes still has to pass sandbox tests, the
+static scan, and the policy gate before going live. Note that the repair
+prompt necessarily contains the failure traceback and tool source — point it
+at an endpoint your data policy allows.
 
 Safety invariants (non-negotiable):
 

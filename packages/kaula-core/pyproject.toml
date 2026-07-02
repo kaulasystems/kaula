@@ -11,5 +11,9 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 dependencies = []
 
+# Install-time registration (resolved by kaula.core.Registry; config overrides)
+[project.entry-points."kaula.implementations"]
+policyengine = "kaula.core:PermissivePolicyEngine"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/kaula"]

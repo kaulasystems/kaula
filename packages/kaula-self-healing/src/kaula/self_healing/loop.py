@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from kaula.core import (
     AuditSink,
@@ -17,8 +18,10 @@ from kaula.core import (
     MemoryStore,
     PermissivePolicyEngine,
     PolicyEngine,
+    Registry,
     RepairAgent,
     RepairCandidate,
+    ResolutionError,
     Sandbox,
     Scanner,
     ToolFailure,
@@ -79,6 +82,40 @@ class SelfHealingLoop:
         self._max_attempts = max_attempts
         self._sandbox_timeout_s = sandbox_timeout_s
         self._notify = notify
+
+    @classmethod
+    def from_registry(
+        cls,
+        registry: Registry,
+        *,
+        max_attempts: int = 3,
+        sandbox_timeout_s: float = 30.0,
+        notify: Callable[[str], None] | None = None,
+    ) -> SelfHealingLoop:
+        """Assemble a loop from a Registry (inject > config > installed > default).
+
+        RepairAgent, Sandbox, Scanner, and AuditSink must resolve; PolicyEngine
+        falls back to the permissive default and MemoryStore to no memory when
+        nothing is registered for them.
+        """
+
+        def optional(interface: type) -> Any | None:
+            try:
+                return registry.resolve(interface)
+            except ResolutionError:
+                return None
+
+        return cls(
+            repair_agent=registry.resolve(RepairAgent),
+            sandbox=registry.resolve(Sandbox),
+            scanner=registry.resolve(Scanner),
+            audit=registry.resolve(AuditSink),
+            policy=optional(PolicyEngine),
+            memory=optional(MemoryStore),
+            max_attempts=max_attempts,
+            sandbox_timeout_s=sandbox_timeout_s,
+            notify=notify,
+        )
 
     def heal(
         self,
