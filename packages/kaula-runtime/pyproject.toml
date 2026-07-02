@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kaula-runtime"
+version = "0.1.0"
+description = "Kaula CrewAI adapter: tool-call interception, healing trigger, pause-on-failure"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "kaula-core>=0.1,<0.2",
+    "kaula-self-healing>=0.1,<0.2",
+    "crewai>=0.80",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kaula"]

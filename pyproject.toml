@@ -1,0 +1,71 @@
+# Workspace root — tooling only, never published.
+# The publishable distributions live under packages/ (see docs/kaula-oss-architecture.md §1).
+
+[project]
+name = "kaula-monorepo"
+version = "0.0.0"
+description = "Kaula monorepo workspace root (not a published distribution)"
+requires-python = ">=3.11"
+dependencies = [
+    "kaula-core",
+    "kaula-self-healing",
+    "kaula-runtime",
+    "kaula-sandbox-local",
+    "kaula-audit-local",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "black>=24.0",
+    "mypy>=1.10",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+kaula-core = { workspace = true }
+kaula-self-healing = { workspace = true }
+kaula-runtime = { workspace = true }
+kaula-sandbox-local = { workspace = true }
+kaula-audit-local = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = [
+    "packages/kaula-core/src",
+    "packages/kaula-self-healing/src",
+    "packages/kaula-runtime/src",
+    "packages/kaula-sandbox-local/src",
+    "packages/kaula-audit-local/src",
+]
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = "crewai.*"
+ignore_missing_imports = true
