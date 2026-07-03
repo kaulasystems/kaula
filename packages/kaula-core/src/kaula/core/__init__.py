@@ -22,7 +22,7 @@ from kaula.core.protocols import (
     Sandbox,
     Scanner,
 )
-from kaula.core.registry import Registry, ResolutionError, load_symbol
+from kaula.core.registry import ENTRY_POINT_GROUP, Registry, ResolutionError, load_symbol
 from kaula.core.types import (
     AuditEvent,
     HealingRecord,
@@ -43,6 +43,7 @@ from kaula.core.types import (
 )
 
 __all__ = [
+    "ENTRY_POINT_GROUP",
     "PHASE_ORDER",
     "RETRY_PHASES",
     "TERMINAL_PHASES",

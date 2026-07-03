@@ -1,6 +1,6 @@
 # Kaula — Open-Source Library Architecture
 
-*Companion to `kaula-architecture.md`. This document specifies the **package and module structure** of the open-source Kaula libraries: how the monorepo is laid out, where the open/commercial seam falls in code, and the extension points the commercial layer plugs into. Targets: Python (matching CrewAI), monorepo of separately-publishable packages under a shared `kaula.*` import namespace, **production-grade** open tier (stable interfaces, real coverage, an honest reference sandbox).*
+*This document specifies the **package and module structure** of the open-source Kaula libraries: how the monorepo is laid out, where the open/commercial seam falls in code, and the extension points the commercial layer plugs into. Targets: Python (matching CrewAI), monorepo of separately-publishable packages under a shared `kaula.*` import namespace, **production-grade** open tier (stable interfaces, real coverage, an honest reference sandbox).*
 
 ---
 
@@ -190,7 +190,7 @@ kaula-mcp ─┘                                ▲
 
 ---
 
-## 7. Build order for the OSS repo (matches `kaula-architecture.md` §11)
+## 7. Build order for the OSS repo
 
 **v0 ships five packages, not nine.** Pre-validation, every published package is maintenance surface, versioning overhead, and implied API commitment. The loop-critical set is `kaula-core`, `kaula-self-healing`, `kaula-runtime`, `kaula-sandbox-local`, `kaula-audit-local` — enough to run, demo, and put into first production use the entire differentiator. The rest of the open tier follows once the loop is validated with real users.
 

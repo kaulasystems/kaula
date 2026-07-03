@@ -1,8 +1,25 @@
-# Kaula
+<p align="center">
+  <img src="docs/assets/kaula-banner.svg" alt="Kaula — self-healing agent infrastructure" width="820">
+</p>
 
-Self-healing agent infrastructure, built on CrewAI. When an agent's tool
-fails at runtime, Kaula captures the failure, has a repair agent rewrite the
-tool, verifies the candidate in a sandbox (tests + security scan), and
+<p align="center">
+  <b>Self-healing infrastructure for AI agents.</b><br>
+  Broken tools get rewritten, sandbox-verified, hot-swapped live — audited, and reversible in one step.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache_2.0-2DD4BF?style=flat-square"></a>
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-6366F1?style=flat-square&logo=python&logoColor=white">
+  <img alt="Runtime: CrewAI" src="https://img.shields.io/badge/runtime-CrewAI-34D399?style=flat-square">
+  <img alt="Status: MVP" src="https://img.shields.io/badge/status-MVP-64748B?style=flat-square">
+  <a href="docs/user-guide.md"><img alt="Docs: user guide" src="https://img.shields.io/badge/docs-user_guide-22D3EE?style=flat-square"></a>
+</p>
+
+---
+
+Kaula is self-healing agent infrastructure, built on CrewAI. When an agent's
+tool fails at runtime, Kaula captures the failure, has a repair agent rewrite
+the tool, verifies the candidate in a sandbox (tests + security scan), and
 hot-swaps it live — **only if it passes**. Every change is written to an
 immutable, hash-chained audit trail and is reversible in one step.
 
@@ -34,6 +51,18 @@ screening, credential brokering), RBAC/approval workflows, or fleet-scale
 tamper-evident audit storage. Those are commercial implementations of the
 same `kaula.core` interfaces, resolved by configuration — installing them is
 a dependency swap, not a rewrite.
+
+## Documentation
+
+- **[User guide](docs/user-guide.md)** — installation, how healing works,
+  component reference, troubleshooting, and nine ready-to-use recipes
+  (self-healing tools, CrewAI integration, API-drift survival, ETL healing,
+  audit/rollback runbook, pause & resume, config-driven assembly, custom
+  policies, alerting).
+- [Architecture](docs/kaula-oss-architecture.md) — package layout and the
+  open/commercial seam.
+- [CLAUDE.md](CLAUDE.md) — contributor rules (dependency direction,
+  namespace rules, build order).
 
 ## Quickstart (development)
 

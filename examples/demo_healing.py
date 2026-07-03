@@ -9,12 +9,16 @@ the tool is hot-swapped live — the original call then succeeds. Every step
 lands in a hash-chained audit trail, and the swap is reverted in one logged
 action at the end.
 
-The repair agent here is scripted (deterministic — no LLM key needed) so the
-demo shows the *loop*: capture → verify → gate → swap → audit → rollback.
+With ANTHROPIC_API_KEY set (and the optional LLM extra installed:
+pip install "kaula-self-healing[llm]"), the repair is proposed live by
+LLMRepairAgent; otherwise a deterministic scripted agent stands in so the
+demo always shows the *loop*: capture → verify → gate → swap → audit →
+rollback.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -102,6 +106,24 @@ class DemoProcessSandbox:
         )
 
 
+def pick_repair_agent() -> object:
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            from kaula.self_healing import LLMRepairAgent
+
+            agent = LLMRepairAgent()
+        except ImportError:
+            print(
+                "repair agent: ANTHROPIC_API_KEY is set but the anthropic SDK is missing "
+                '(pip install "kaula-self-healing[llm]") — using the scripted agent'
+            )
+            return ScriptedRepairAgent()
+        print("repair agent: LLMRepairAgent (live Claude repair)")
+        return agent
+    print("repair agent: scripted (set ANTHROPIC_API_KEY for a live LLM repair)")
+    return ScriptedRepairAgent()
+
+
 def pick_sandbox() -> DockerSandbox | DemoProcessSandbox:
     if shutil.which("docker") is not None:
         probe = subprocess.run(["docker", "info"], capture_output=True, timeout=15)
@@ -117,7 +139,7 @@ def main() -> int:
     store = ToolVersionStore(audit=audit)
 
     loop = SelfHealingLoop(
-        repair_agent=ScriptedRepairAgent(),
+        repair_agent=pick_repair_agent(),  # type: ignore[arg-type]
         sandbox=pick_sandbox(),
         scanner=BasicStaticScanner(),
         audit=audit,

@@ -69,3 +69,8 @@ warn_redundant_casts = true
 [[tool.mypy.overrides]]
 module = "crewai.*"
 ignore_missing_imports = true
+
+# optional extra of kaula-self-healing; imported lazily by LLMRepairAgent
+[[tool.mypy.overrides]]
+module = "anthropic.*"
+ignore_missing_imports = true

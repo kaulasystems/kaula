@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    name: lint · typecheck · seam · tests
+    runs-on: ubuntu-latest # Docker daemon available: sandbox integration test runs for real
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install workspace
+        run: uv sync
+
+      - name: Seam check (open→commercial imports, framework confinement, namespace)
+        run: uv run python scripts/check_seam.py
+
+      - name: Lint
+        run: |
+          uv run ruff check packages examples scripts
+          uv run black --check packages examples scripts
+
+      - name: Typecheck
+        run: uv run mypy packages/kaula-core/src packages/kaula-self-healing/src packages/kaula-runtime/src packages/kaula-sandbox-local/src packages/kaula-audit-local/src
+
+      - name: Pre-pull sandbox image
+        run: docker pull python:3.11-slim
+
+      - name: Tests
+        run: uv run pytest packages
+
+      - name: Demo (canonical healing run)
+        run: uv run python examples/demo_healing.py
+
+  wheels:
+    name: build + namespace check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build all open wheels
+        run: |
+          for pkg in kaula-core kaula-self-healing kaula-runtime kaula-sandbox-local kaula-audit-local; do
+            uv build --package "$pkg" --out-dir dist/
+          done
+
+      - name: Wheel namespace check (no root kaula/__init__.py)
+        run: uv run --no-project python scripts/check_wheel.py dist/*.whl

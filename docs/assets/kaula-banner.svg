@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 340" width="1280" height="340" role="img" aria-label="Kaula — self-healing agent infrastructure">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0A0F1E"/>
+      <stop offset="1" stop-color="#131A2E"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="0.5" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.13" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#2DD4BF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="card"><rect x="0" y="0" width="1280" height="340" rx="24"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#card)">
+    <rect x="0" y="0" width="1280" height="340" fill="url(#bg)"/>
+    <rect x="0" y="0" width="1280" height="340" fill="url(#glow)"/>
+
+    <!-- concentric orbits (infrastructure texture) -->
+    <g fill="none" stroke="#2DD4BF" stroke-opacity="0.08" stroke-width="1.5">
+      <circle cx="1130" cy="170" r="70"/>
+      <circle cx="1130" cy="170" r="122"/>
+      <circle cx="1130" cy="170" r="178"/>
+      <circle cx="1130" cy="170" r="238"/>
+    </g>
+    <g fill="#22D3EE" fill-opacity="0.28">
+      <circle cx="1200" cy="170" r="3.5"/>
+      <circle cx="1130" cy="48" r="3.5"/>
+      <circle cx="1008" cy="118" r="3.5"/>
+      <circle cx="1252" cy="118" r="3.5"/>
+      <circle cx="1052" cy="248" r="3.5"/>
+    </g>
+
+    <!-- accent bar along the bottom -->
+    <rect x="32" y="322" width="1216" height="6" rx="3" fill="url(#accent)"/>
+  </g>
+
+  <!-- icon: shield hexagon + heal pulse ending in a verified check -->
+  <g>
+    <polygon points="150,86 214,123 214,197 150,234 86,197 86,123"
+             fill="#0E1526" stroke="url(#teal)" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M 104 160 H 130 L 140 136 L 152 186 L 164 146 L 173 160 H 180 L 189 171 L 208 143"
+          fill="none" stroke="#F8FAFC" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="272" y="176"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="104" font-weight="800" letter-spacing="2" fill="#F8FAFC">Kaula</text>
+
+  <!-- accent underline under the wordmark -->
+  <rect x="274" y="192" width="150" height="4" rx="2" fill="url(#accent)"/>
+
+  <!-- tagline -->
+  <text x="276" y="224"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="27" font-weight="500" letter-spacing="0.3" fill="#94A3B8">Self-healing agent infrastructure</text>
+
+  <!-- pipeline -->
+  <text x="277" y="262"
+        font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
+        font-size="15.5" font-weight="500" letter-spacing="1.4" fill="#5B677D">detect → diagnose → sandbox → verify → gate → hot-swap → audit</text>
+</svg>

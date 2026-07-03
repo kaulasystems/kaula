@@ -52,3 +52,41 @@ def test_bad_import_path_rejected() -> None:
     registry.configure({"sandbox": "kaula.core.policy"})  # missing ':Attr'
     with pytest.raises(ValueError, match="module:Attr"):
         registry.resolve(Sandbox)
+
+
+class FakeEntryPoint:
+    def __init__(self, name: str, value: str):
+        self.name = name
+        self.value = value
+
+
+def test_entry_point_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "kaula.core.registry.entry_points",
+        lambda group: [FakeEntryPoint("policyengine", "kaula.core.policy:PermissivePolicyEngine")],
+    )
+    registry = Registry(discover_installed=True)
+    assert isinstance(registry.resolve(PolicyEngine), PermissivePolicyEngine)
+
+
+def test_config_outranks_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "kaula.core.registry.entry_points",
+        lambda group: [FakeEntryPoint("sandbox", "kaula.core.policy:PermissivePolicyEngine")],
+    )
+    registry = Registry(discover_installed=True)
+    registry.configure({"sandbox": "test_registry:FakeSandbox"})
+    assert isinstance(registry.resolve(Sandbox), FakeSandbox)
+
+
+def test_conflicting_entry_points_fail_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "kaula.core.registry.entry_points",
+        lambda group: [
+            FakeEntryPoint("sandbox", "kaula.sandbox_local:DockerSandbox"),
+            FakeEntryPoint("sandbox", "kaula.sandbox_hardened:HardenedSandbox"),
+        ],
+    )
+    registry = Registry(discover_installed=True)
+    with pytest.raises(ResolutionError, match="multiple installed implementations"):
+        registry.resolve(Sandbox)
