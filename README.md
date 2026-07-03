@@ -35,6 +35,18 @@ tamper-evident audit storage. Those are commercial implementations of the
 same `kaula.core` interfaces, resolved by configuration — installing them is
 a dependency swap, not a rewrite.
 
+## Documentation
+
+- **[User guide](docs/user-guide.md)** — installation, how healing works,
+  component reference, troubleshooting, and nine ready-to-use recipes
+  (self-healing tools, CrewAI integration, API-drift survival, ETL healing,
+  audit/rollback runbook, pause & resume, config-driven assembly, custom
+  policies, alerting).
+- [Architecture](docs/kaula-oss-architecture.md) — package layout and the
+  open/commercial seam.
+- [CLAUDE.md](CLAUDE.md) — contributor rules (dependency direction,
+  namespace rules, build order).
+
 ## Quickstart (development)
 
 ```bash
