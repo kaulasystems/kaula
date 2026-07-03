@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/kaula-logo.svg" alt="Kaula" width="96">
+</p>
+
 # Kaula User Guide
 
 Kaula is self-healing infrastructure for AI agents. When one of your agent's
