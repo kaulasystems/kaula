@@ -61,6 +61,8 @@ a dependency swap, not a rewrite.
   policies, alerting).
 - [Architecture](docs/kaula-oss-architecture.md) — package layout and the
   open/commercial seam.
+- [Releasing](docs/releasing.md) — per-package PyPI publishing via Trusted
+  Publishing, release order, and version pins.
 - [CLAUDE.md](CLAUDE.md) — contributor rules (dependency direction,
   namespace rules, build order).
 

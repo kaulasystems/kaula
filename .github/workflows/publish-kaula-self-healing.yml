@@ -1,0 +1,87 @@
+# Publish kaula-self-healing to PyPI via Trusted Publishing (OIDC, no API tokens).
+#
+# Trigger: push a tag shaped `kaula-self-healing/vX.Y.Z`.
+# Release order matters — publish kaula-core first; the release-order guard
+# below refuses to publish if this package's kaula-* deps aren't on PyPI yet.
+#
+# One-time setup: add a Trusted Publisher on PyPI *and* TestPyPI for project
+# `kaula-self-healing`, owner `kaulasystems`, repo `kaula`, workflow file
+# `publish-kaula-self-healing.yml`. See docs/releasing.md.
+
+name: Publish kaula-self-healing
+
+on:
+  push:
+    tags:
+      - "kaula-self-healing/v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: build · verify · publish kaula-self-healing
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # OIDC for PyPI Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to publish a commercial package
+        run: |
+          case "kaula-self-healing" in
+            kaula-sandbox-hardened|kaula-memory-cloud|kaula-mcp-governed|kaula-governance|kaula-audit-cloud|kaula-healing-network)
+              echo "::error::kaula-self-healing is commercial and never publishes to public PyPI" && exit 1 ;;
+          esac
+
+      - name: Tag version must match pyproject version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME##*/v}"
+          PKG_VERSION="$(grep -m1 '^version' packages/kaula-self-healing/pyproject.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "tag=$TAG_VERSION pyproject=$PKG_VERSION"
+          test "$TAG_VERSION" = "$PKG_VERSION" || { echo "::error::tag $TAG_VERSION != pyproject $PKG_VERSION"; exit 1; }
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install workspace
+        run: uv sync
+
+      - name: Seam check (no open→commercial import, namespace rules)
+        run: uv run python scripts/check_seam.py
+
+      - name: Tests (kaula-self-healing)
+        run: uv run pytest packages/kaula-self-healing/tests
+
+      - name: Release-order guard (kaula-* deps already on PyPI)
+        run: uv run python scripts/check_release_deps.py kaula-self-healing
+
+      - name: Build sdist + wheel
+        run: uv build --package kaula-self-healing --out-dir dist/
+
+      - name: Wheel namespace check (no root kaula/__init__.py)
+        run: uv run python scripts/check_wheel.py dist/*.whl
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Smoke-install from TestPyPI in a clean venv
+        run: |
+          VERSION="${GITHUB_REF_NAME##*/v}"
+          uv venv /tmp/smoke
+          for i in 1 2 3 4 5; do
+            VIRTUAL_ENV=/tmp/smoke uv pip install \
+              --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ \
+              "kaula-self-healing==${VERSION}" && break
+            echo "TestPyPI index not consistent yet; retry $i" && sleep 30
+          done
+          /tmp/smoke/bin/python -c "import kaula.self_healing; print('kaula.self_healing OK')"
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
