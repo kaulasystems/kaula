@@ -61,6 +61,8 @@ a dependency swap, not a rewrite.
   policies, alerting).
 - [Architecture](docs/kaula-oss-architecture.md) — package layout and the
   open/commercial seam.
+- [Human-in-the-loop](docs/human-in-the-loop.md) — insert a person after
+  detection and/or after auto-repair (approve before a verified fix goes live).
 - [LLM providers](docs/llm-providers.md) — heal with OpenAI, Azure, Bedrock,
   Vertex, or a local model instead of Claude (the repair agent is a Protocol).
 - [Releasing](docs/releasing.md) — per-package PyPI publishing via Trusted

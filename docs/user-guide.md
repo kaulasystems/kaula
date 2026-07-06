@@ -206,11 +206,15 @@ SelfHealingLoop(
     max_attempts=3,         # repair attempts before giving up
     sandbox_timeout_s=30.0, # hard timeout per sandbox run
     notify=None,            # callable(str) invoked when healing fails
+    review_failure=None,    # human gate after detection, before any repair
+    review_candidate=None,  # human gate after a fix is verified, before hot-swap
 )
 ```
 
 `SelfHealingLoop.from_registry(registry, ...)` builds the same object
-through the registry instead of explicit arguments (see UC-7).
+through the registry instead of explicit arguments (see UC-7). The two
+`review_*` hooks are optional human-in-the-loop gates (both default to fully
+autonomous) — see [docs/human-in-the-loop.md](human-in-the-loop.md).
 
 ### `kaula.self_healing.LLMRepairAgent`
 
