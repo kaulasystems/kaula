@@ -1,14 +1,17 @@
-"""Reference RepairAgent backed by Claude.
+"""Reference RepairAgent (Claude-backed) + provider-agnostic building blocks.
 
-The loop stays model-agnostic — this is one implementation of the
-``kaula.core.RepairAgent`` Protocol. The ``anthropic`` SDK is an optional
-dependency (``pip install "kaula-self-healing[llm]"``) imported lazily, so
-the loop package itself stays light.
+The loop stays model-agnostic — ``RepairAgent`` is a ``kaula.core`` Protocol,
+so any provider works by implementing ``propose_repair``. ``LLMRepairAgent``
+is the reference implementation using Claude; ``build_repair_prompt`` and
+``candidate_from_reply`` are the shared, provider-neutral pieces so an OpenAI,
+Azure, Bedrock, or local-model agent is only a few lines (see
+``docs/llm-providers.md``). The ``anthropic`` SDK is an optional dependency
+(``pip install "kaula-self-healing[llm]"``) imported lazily.
 
 Privacy note: the failure traceback and current tool source are sent to the
 model provider as prompt content. Audit stays by-reference (the loop never
 writes these into the audit chain), but the repair prompt necessarily
-contains them — point this agent at an endpoint your data policy allows.
+contains them — point any agent at an endpoint your data policy allows.
 """
 
 from __future__ import annotations
@@ -19,11 +22,17 @@ from typing import Any
 
 from kaula.core import RepairCandidate, ToolFailure, ToolVersion
 
-__all__ = ["LLMRepairAgent", "extract_python_block"]
+__all__ = [
+    "REPAIR_SYSTEM_PROMPT",
+    "LLMRepairAgent",
+    "build_repair_prompt",
+    "candidate_from_reply",
+    "extract_python_block",
+]
 
 DEFAULT_MODEL = "claude-opus-4-8"
 
-_SYSTEM_PROMPT = """\
+REPAIR_SYSTEM_PROMPT = """\
 You are Kaula's repair agent. An agent tool failed at runtime; your job is to
 rewrite it so the failure cannot recur, changing as little as possible.
 
@@ -56,6 +65,79 @@ def _trim(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit] + "\n… [trimmed]"
 
 
+def build_repair_prompt(
+    failure: ToolFailure,
+    current: ToolVersion,
+    history: Sequence[RepairCandidate],
+) -> tuple[str, str]:
+    """Return ``(system_prompt, user_prompt)`` for asking any LLM to repair a tool.
+
+    Provider-neutral: feed the pair into whatever chat API you use (Claude's
+    ``system=`` + user message, OpenAI's ``system``/``user`` roles, etc.).
+    """
+    return REPAIR_SYSTEM_PROMPT, _build_user_prompt(failure, current, history)
+
+
+def candidate_from_reply(
+    reply: str,
+    failure: ToolFailure,
+    current: ToolVersion,
+    history: Sequence[RepairCandidate],
+) -> RepairCandidate:
+    """Parse an LLM reply (diagnosis + one ```python block) into a candidate.
+
+    Raises ``ValueError`` if the reply has no Python code block or the code
+    doesn't define the required entrypoint — a provider agent should treat that
+    as "no candidate" (the loop's safe state) and return ``None``.
+    """
+    source = extract_python_block(reply)
+    if source is None:
+        raise ValueError("response contained no Python code block")
+    if f"def {current.entrypoint}" not in source:
+        raise ValueError(
+            f"candidate does not define the required entrypoint {current.entrypoint!r}"
+        )
+    diagnosis = reply.split("```", 1)[0].strip() or "no diagnosis provided"
+    return RepairCandidate(
+        failure_id=failure.failure_id,
+        tool_name=failure.tool_name,
+        entrypoint=current.entrypoint,
+        source=source,
+        diagnosis=_trim(diagnosis, 1000),
+        attempt=len(history) + 1,
+    )
+
+
+def _build_user_prompt(
+    failure: ToolFailure,
+    current: ToolVersion,
+    history: Sequence[RepairCandidate],
+) -> str:
+    parts = [
+        f"Tool name: {failure.tool_name}",
+        f"Entrypoint to preserve: {current.entrypoint}",
+        f"Repair attempt: {len(history) + 1}",
+        "",
+        f"Current source (version {current.version}):\n```python\n{current.source}```",
+        "",
+        f"Runtime failure: {failure.error_type}: {_trim(failure.error_message, 500)}",
+        "",
+        "Traceback:\n```\n" + _trim(failure.traceback, 3000) + "\n```",
+    ]
+    if failure.task_description:
+        parts.append(f"\nTask the agent was performing: {failure.task_description}")
+    for candidate in history:
+        parts.append(
+            f"\nPrevious candidate (attempt {candidate.attempt}) FAILED verification. "
+            "Do not repeat it:\n```python\n" + _trim(candidate.source, 2000) + "\n```"
+        )
+    parts.append(
+        "\nRewrite the tool so this failure cannot recur while preserving existing "
+        "behaviour for inputs that already worked."
+    )
+    return "\n".join(parts)
+
+
 class LLMRepairAgent:
     """RepairAgent that asks Claude to rewrite the failed tool.
 
@@ -63,6 +145,10 @@ class LLMRepairAgent:
     client; otherwise one is constructed from the environment. API errors and
     unusable responses yield ``None`` — for the loop, "no candidate" is the
     safe answer — with the cause kept on ``last_error``.
+
+    For a different provider, implement ``RepairAgent`` yourself with
+    ``build_repair_prompt`` + ``candidate_from_reply`` — see
+    ``docs/llm-providers.md``.
     """
 
     def __init__(
@@ -93,15 +179,14 @@ class LLMRepairAgent:
         history: Sequence[RepairCandidate],
     ) -> RepairCandidate | None:
         self.last_error = None
+        system, user = build_repair_prompt(failure, current, history)
         try:
             response = self._client.messages.create(
                 model=self._model,
                 max_tokens=self._max_tokens,
                 thinking={"type": "adaptive"},
-                system=_SYSTEM_PROMPT,
-                messages=[
-                    {"role": "user", "content": self._build_prompt(failure, current, history)}
-                ],
+                system=system,
+                messages=[{"role": "user", "content": user}],
             )
         except Exception as exc:
             # A failed repair is a safe state: report "no candidate" and let
@@ -116,52 +201,8 @@ class LLMRepairAgent:
         text = "".join(
             block.text for block in response.content if getattr(block, "type", None) == "text"
         )
-        source = extract_python_block(text)
-        if source is None:
-            self.last_error = "response contained no Python code block"
+        try:
+            return candidate_from_reply(text, failure, current, history)
+        except ValueError as exc:
+            self.last_error = str(exc)
             return None
-        if f"def {current.entrypoint}" not in source:
-            self.last_error = (
-                f"candidate does not define the required entrypoint {current.entrypoint!r}"
-            )
-            return None
-
-        diagnosis = text.split("```", 1)[0].strip() or "no diagnosis provided"
-        return RepairCandidate(
-            failure_id=failure.failure_id,
-            tool_name=failure.tool_name,
-            entrypoint=current.entrypoint,
-            source=source,
-            diagnosis=_trim(diagnosis, 1000),
-            attempt=len(history) + 1,
-        )
-
-    def _build_prompt(
-        self,
-        failure: ToolFailure,
-        current: ToolVersion,
-        history: Sequence[RepairCandidate],
-    ) -> str:
-        parts = [
-            f"Tool name: {failure.tool_name}",
-            f"Entrypoint to preserve: {current.entrypoint}",
-            f"Repair attempt: {len(history) + 1}",
-            "",
-            f"Current source (version {current.version}):\n```python\n{current.source}```",
-            "",
-            f"Runtime failure: {failure.error_type}: {_trim(failure.error_message, 500)}",
-            "",
-            "Traceback:\n```\n" + _trim(failure.traceback, 3000) + "\n```",
-        ]
-        if failure.task_description:
-            parts.append(f"\nTask the agent was performing: {failure.task_description}")
-        for candidate in history:
-            parts.append(
-                f"\nPrevious candidate (attempt {candidate.attempt}) FAILED verification. "
-                "Do not repeat it:\n```python\n" + _trim(candidate.source, 2000) + "\n```"
-            )
-        parts.append(
-            "\nRewrite the tool so this failure cannot recur while preserving existing "
-            "behaviour for inputs that already worked."
-        )
-        return "\n".join(parts)

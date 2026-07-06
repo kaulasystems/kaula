@@ -28,6 +28,7 @@ from kaula.core import (
     ToolTest,
     ToolVersion,
 )
+from kaula.self_healing.review import CandidateReview, FailureReview
 
 __all__ = ["HealingOutcome", "SelfHealingLoop"]
 
@@ -70,6 +71,8 @@ class SelfHealingLoop:
         max_attempts: int = 3,
         sandbox_timeout_s: float = 30.0,
         notify: Callable[[str], None] | None = None,
+        review_failure: FailureReview | None = None,
+        review_candidate: CandidateReview | None = None,
     ) -> None:
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
@@ -82,6 +85,11 @@ class SelfHealingLoop:
         self._max_attempts = max_attempts
         self._sandbox_timeout_s = sandbox_timeout_s
         self._notify = notify
+        # Human-in-the-loop gates (default: fully autonomous). review_failure
+        # runs after detection, before any repair; review_candidate runs after
+        # a candidate passes tests + scan + the policy gate, before hot-swap.
+        self._review_failure = review_failure
+        self._review_candidate = review_candidate
 
     @classmethod
     def from_registry(
@@ -91,12 +99,15 @@ class SelfHealingLoop:
         max_attempts: int = 3,
         sandbox_timeout_s: float = 30.0,
         notify: Callable[[str], None] | None = None,
+        review_failure: FailureReview | None = None,
+        review_candidate: CandidateReview | None = None,
     ) -> SelfHealingLoop:
         """Assemble a loop from a Registry (inject > config > installed > default).
 
         RepairAgent, Sandbox, Scanner, and AuditSink must resolve; PolicyEngine
         falls back to the permissive default and MemoryStore to no memory when
-        nothing is registered for them.
+        nothing is registered for them. Review hooks are passed explicitly —
+        they are app-specific callables, not resolved from config.
         """
 
         def optional(interface: type) -> Any | None:
@@ -115,6 +126,8 @@ class SelfHealingLoop:
             max_attempts=max_attempts,
             sandbox_timeout_s=sandbox_timeout_s,
             notify=notify,
+            review_failure=review_failure,
+            review_candidate=review_candidate,
         )
 
     def heal(
@@ -141,7 +154,25 @@ class SelfHealingLoop:
 
         history: list[RepairCandidate] = []
         reason = "unknown"
-        for attempt in range(1, self._max_attempts + 1):
+
+        # Human-in-the-loop gate #1: after detection, before any auto-repair.
+        proceed = True
+        if self._review_failure is not None:
+            approval = self._review_failure(failure, current)
+            self._audit.append(
+                "failure_review",
+                {
+                    "failure_id": failure.failure_id,
+                    "tool_name": failure.tool_name,
+                    "approved": approval.approved,
+                    "reason": _trim(approval.reason),
+                },
+            )
+            if not approval.approved:
+                proceed = False
+                reason = "human declined to auto-repair: " f"{approval.reason or 'no reason given'}"
+
+        for attempt in range(1, self._max_attempts + 1) if proceed else ():
             sm.advance(HealingPhase.DIAGNOSE)
             candidate = self._repair_agent.propose_repair(failure, current, tuple(history))
             if candidate is None:
@@ -215,6 +246,26 @@ class SelfHealingLoop:
                 # is not something the loop negotiates with.
                 reason = f"policy gate denied swap: {decision.reason}"
                 break
+
+            # Human-in-the-loop gate #2: the candidate passed tests + scan +
+            # the automated policy gate; a human approves before it goes live.
+            if self._review_candidate is not None:
+                approval = self._review_candidate(candidate, result, scan)
+                self._audit.append(
+                    "candidate_review",
+                    {
+                        "candidate_id": candidate.candidate_id,
+                        "tool_name": candidate.tool_name,
+                        "approved": approval.approved,
+                        "reason": _trim(approval.reason),
+                    },
+                )
+                if not approval.approved:
+                    reason = (
+                        "human rejected verified candidate: "
+                        f"{approval.reason or 'no reason given'}"
+                    )
+                    break
 
             sm.advance(HealingPhase.HOT_SWAP)
             new_version = current.child(candidate.source)

@@ -206,11 +206,15 @@ SelfHealingLoop(
     max_attempts=3,         # repair attempts before giving up
     sandbox_timeout_s=30.0, # hard timeout per sandbox run
     notify=None,            # callable(str) invoked when healing fails
+    review_failure=None,    # human gate after detection, before any repair
+    review_candidate=None,  # human gate after a fix is verified, before hot-swap
 )
 ```
 
 `SelfHealingLoop.from_registry(registry, ...)` builds the same object
-through the registry instead of explicit arguments (see UC-7).
+through the registry instead of explicit arguments (see UC-7). The two
+`review_*` hooks are optional human-in-the-loop gates (both default to fully
+autonomous) — see [docs/human-in-the-loop.md](human-in-the-loop.md).
 
 ### `kaula.self_healing.LLMRepairAgent`
 
@@ -229,6 +233,9 @@ LLMRepairAgent(model="claude-opus-4-8", client=None, max_tokens=16000)
   gate.
 - Privacy: the repair prompt necessarily contains the traceback and tool
   source. Point it at an endpoint your data policy allows.
+- **Different provider?** `RepairAgent` is a Protocol — heal with OpenAI,
+  Azure, Bedrock, Vertex, or a local model by implementing one method. See
+  [docs/llm-providers.md](llm-providers.md).
 
 ### `kaula.self_healing.BasicStaticScanner`
 

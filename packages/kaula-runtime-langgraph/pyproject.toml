@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kaula-runtime-langgraph"
+version = "0.1.0"
+description = "Kaula LangGraph adapter: self-healing tools for LangGraph / LangChain"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "kaula-core>=0.1,<0.2",
+    "kaula-self-healing>=0.1,<0.2",
+    "kaula-runtime>=0.1,<0.2",
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kaula"]

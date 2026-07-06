@@ -19,6 +19,13 @@ static scan, and the policy gate before going live. Note that the repair
 prompt necessarily contains the failure traceback and tool source — point it
 at an endpoint your data policy allows.
 
+Optional **human-in-the-loop** gates: pass `review_failure` (consulted after
+detection, before any repair) and/or `review_candidate` (consulted after a
+candidate passes tests + scan + the policy gate, before hot-swap). Both
+default to fully autonomous; rejection leaves the tool unchanged and pauses
+the run. `Approval`, `always_approve`/`always_reject`, and an interactive
+`ConsoleReviewer` are provided — see `docs/human-in-the-loop.md`.
+
 Safety invariants (non-negotiable):
 
 - A candidate ships **only** if it passes tests, scan, and the policy gate.
