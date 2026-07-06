@@ -28,7 +28,7 @@ jobs:
           uv run black --check packages examples scripts
 
       - name: Typecheck
-        run: uv run mypy packages/kaula-core/src packages/kaula-self-healing/src packages/kaula-runtime/src packages/kaula-sandbox-local/src packages/kaula-audit-local/src
+        run: uv run mypy packages/kaula-core/src packages/kaula-self-healing/src packages/kaula-runtime/src packages/kaula-runtime-langgraph/src packages/kaula-sandbox-local/src packages/kaula-audit-local/src
 
       - name: Pre-pull sandbox image
         run: docker pull python:3.11-slim
@@ -51,7 +51,7 @@ jobs:
 
       - name: Build all open wheels
         run: |
-          for pkg in kaula-core kaula-self-healing kaula-runtime kaula-sandbox-local kaula-audit-local; do
+          for pkg in kaula-core kaula-self-healing kaula-runtime kaula-runtime-langgraph kaula-sandbox-local kaula-audit-local; do
             uv build --package "$pkg" --out-dir dist/
           done
 

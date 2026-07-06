@@ -10,6 +10,7 @@ dependencies = [
     "kaula-core",
     "kaula-self-healing",
     "kaula-runtime",
+    "kaula-runtime-langgraph",
     "kaula-sandbox-local",
     "kaula-audit-local",
 ]
@@ -20,6 +21,9 @@ dev = [
     "ruff>=0.5",
     "black>=24.0",
     "mypy>=1.10",
+    # CrewAI is now an optional extra of kaula-runtime; install it (and the
+    # LangChain/LangGraph stack) in the dev env so both adapters' tests run.
+    "crewai>=0.80",
 ]
 
 [tool.uv]
@@ -32,6 +36,7 @@ members = ["packages/*"]
 kaula-core = { workspace = true }
 kaula-self-healing = { workspace = true }
 kaula-runtime = { workspace = true }
+kaula-runtime-langgraph = { workspace = true }
 kaula-sandbox-local = { workspace = true }
 kaula-audit-local = { workspace = true }
 
@@ -58,6 +63,7 @@ mypy_path = [
     "packages/kaula-core/src",
     "packages/kaula-self-healing/src",
     "packages/kaula-runtime/src",
+    "packages/kaula-runtime-langgraph/src",
     "packages/kaula-sandbox-local/src",
     "packages/kaula-audit-local/src",
 ]
@@ -68,6 +74,11 @@ warn_redundant_casts = true
 
 [[tool.mypy.overrides]]
 module = "crewai.*"
+ignore_missing_imports = true
+
+# only kaula-runtime-langgraph (an adapter) may import these
+[[tool.mypy.overrides]]
+module = ["langgraph.*", "langchain_core.*"]
 ignore_missing_imports = true
 
 # optional extra of kaula-self-healing; imported lazily by LLMRepairAgent

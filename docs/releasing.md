@@ -10,7 +10,8 @@ distribution has its own workflow under `.github/workflows/`:
 | `kaula-audit-local` | `publish-kaula-audit-local.yml` | `kaula.audit_local` | `kaula-core` |
 | `kaula-sandbox-local` | `publish-kaula-sandbox-local.yml` | `kaula.sandbox_local` | `kaula-core` |
 | `kaula-self-healing` | `publish-kaula-self-healing.yml` | `kaula.self_healing` | `kaula-core` |
-| `kaula-runtime` | `publish-kaula-runtime.yml` | `kaula.runtime` | `kaula-core`, `kaula-self-healing`, `crewai` |
+| `kaula-runtime` | `publish-kaula-runtime.yml` | `kaula.runtime` | `kaula-core`, `kaula-self-healing` (CrewAI is the optional `[crewai]` extra) |
+| `kaula-runtime-langgraph` | `publish-kaula-runtime-langgraph.yml` | `kaula.runtime_langgraph` | `kaula-core`, `kaula-self-healing`, `kaula-runtime`, `langgraph`, `langchain-core` |
 
 Each workflow fires on a tag shaped `<distribution>/vX.Y.Z` and, for that one
 package: refuses commercial names, checks the tag matches the pyproject

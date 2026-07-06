@@ -1,0 +1,88 @@
+# Publish kaula-runtime-langgraph to PyPI via Trusted Publishing (OIDC, no API tokens).
+#
+# Trigger: push a tag shaped `kaula-runtime-langgraph/vX.Y.Z`.
+# Release order matters — publish kaula-core (and kaula-self-healing,
+# kaula-runtime) first; the release-order guard below refuses to publish if
+# this package's kaula-* deps aren't on PyPI yet.
+#
+# One-time setup: add a Trusted Publisher on PyPI *and* TestPyPI for project
+# `kaula-runtime-langgraph`, owner `kaulasystems`, repo `kaula`, workflow file
+# `publish-kaula-runtime-langgraph.yml`. See docs/releasing.md.
+
+name: Publish kaula-runtime-langgraph
+
+on:
+  push:
+    tags:
+      - "kaula-runtime-langgraph/v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: build · verify · publish kaula-runtime-langgraph
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # OIDC for PyPI Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to publish a commercial package
+        run: |
+          case "kaula-runtime-langgraph" in
+            kaula-sandbox-hardened|kaula-memory-cloud|kaula-mcp-governed|kaula-governance|kaula-audit-cloud|kaula-healing-network)
+              echo "::error::kaula-runtime-langgraph is commercial and never publishes to public PyPI" && exit 1 ;;
+          esac
+
+      - name: Tag version must match pyproject version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME##*/v}"
+          PKG_VERSION="$(grep -m1 '^version' packages/kaula-runtime-langgraph/pyproject.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "tag=$TAG_VERSION pyproject=$PKG_VERSION"
+          test "$TAG_VERSION" = "$PKG_VERSION" || { echo "::error::tag $TAG_VERSION != pyproject $PKG_VERSION"; exit 1; }
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install workspace
+        run: uv sync
+
+      - name: Seam check (no open→commercial import, namespace rules)
+        run: uv run python scripts/check_seam.py
+
+      - name: Tests (kaula-runtime-langgraph)
+        run: uv run pytest packages/kaula-runtime-langgraph/tests
+
+      - name: Release-order guard (kaula-* deps already on PyPI)
+        run: uv run python scripts/check_release_deps.py kaula-runtime-langgraph
+
+      - name: Build sdist + wheel
+        run: uv build --package kaula-runtime-langgraph --out-dir dist/
+
+      - name: Wheel namespace check (no root kaula/__init__.py)
+        run: uv run python scripts/check_wheel.py dist/*.whl
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Smoke-install from TestPyPI in a clean venv
+        run: |
+          VERSION="${GITHUB_REF_NAME##*/v}"
+          uv venv /tmp/smoke
+          for i in 1 2 3 4 5; do
+            VIRTUAL_ENV=/tmp/smoke uv pip install \
+              --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ \
+              "kaula-runtime-langgraph==${VERSION}" && break
+            echo "TestPyPI index not consistent yet; retry $i" && sleep 30
+          done
+          /tmp/smoke/bin/python -c "import kaula.runtime_langgraph; print('kaula.runtime_langgraph OK')"
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
