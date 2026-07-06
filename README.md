@@ -61,6 +61,8 @@ a dependency swap, not a rewrite.
   policies, alerting).
 - [Architecture](docs/kaula-oss-architecture.md) — package layout and the
   open/commercial seam.
+- [LLM providers](docs/llm-providers.md) — heal with OpenAI, Azure, Bedrock,
+  Vertex, or a local model instead of Claude (the repair agent is a Protocol).
 - [Releasing](docs/releasing.md) — per-package PyPI publishing via Trusted
   Publishing, release order, and version pins.
 - [CLAUDE.md](CLAUDE.md) — contributor rules (dependency direction,

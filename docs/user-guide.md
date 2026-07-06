@@ -229,6 +229,9 @@ LLMRepairAgent(model="claude-opus-4-8", client=None, max_tokens=16000)
   gate.
 - Privacy: the repair prompt necessarily contains the traceback and tool
   source. Point it at an endpoint your data policy allows.
+- **Different provider?** `RepairAgent` is a Protocol — heal with OpenAI,
+  Azure, Bedrock, Vertex, or a local model by implementing one method. See
+  [docs/llm-providers.md](llm-providers.md).
 
 ### `kaula.self_healing.BasicStaticScanner`
 

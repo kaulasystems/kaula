@@ -6,7 +6,11 @@ from typing import Any
 
 import pytest
 from kaula.core import RepairCandidate, ToolFailure, ToolVersion
-from kaula.self_healing import LLMRepairAgent
+from kaula.self_healing import (
+    LLMRepairAgent,
+    build_repair_prompt,
+    candidate_from_reply,
+)
 from kaula.self_healing.repair import extract_python_block
 
 BROKEN_SOURCE = "def parse_price(text):\n    return float(text)\n"
@@ -145,3 +149,55 @@ def test_extract_python_block_variants() -> None:
     assert extract_python_block("no code here") is None
     two_blocks = "```python\nfirst = 1\n```\ntext\n```python\nsecond = 2\n```"
     assert extract_python_block(two_blocks) == "second = 2\n"
+
+
+# --- provider-agnostic helpers (used by non-Claude RepairAgents) ---
+
+
+def test_build_repair_prompt_is_provider_neutral(
+    failure: ToolFailure, current: ToolVersion
+) -> None:
+    system, user = build_repair_prompt(failure, current, ())
+    assert "standard library only" in system
+    assert "subprocess" in system  # deny-list stated up front
+    assert BROKEN_SOURCE in user
+    assert "ValueError" in user
+    assert "extract prices" in user  # task_description carried through
+
+
+def test_candidate_from_reply_parses_good_reply(failure: ToolFailure, current: ToolVersion) -> None:
+    candidate = candidate_from_reply(GOOD_REPLY, failure, current, ())
+    assert candidate.source == FIXED_SOURCE
+    assert candidate.entrypoint == "parse_price"
+    assert candidate.attempt == 1
+    assert "digit grouping" in candidate.diagnosis
+
+
+def test_candidate_from_reply_rejects_missing_block(
+    failure: ToolFailure, current: ToolVersion
+) -> None:
+    with pytest.raises(ValueError, match="no Python code block"):
+        candidate_from_reply("I cannot fix this.", failure, current, ())
+
+
+def test_candidate_from_reply_rejects_wrong_entrypoint(
+    failure: ToolFailure, current: ToolVersion
+) -> None:
+    reply = "Diagnosis.\n\n```python\ndef other():\n    return 1\n```\n"
+    with pytest.raises(ValueError, match="entrypoint"):
+        candidate_from_reply(reply, failure, current, ())
+
+
+def test_candidate_from_reply_counts_attempt_from_history(
+    failure: ToolFailure, current: ToolVersion
+) -> None:
+    previous = RepairCandidate(
+        failure_id=failure.failure_id,
+        tool_name="parse_price",
+        entrypoint="parse_price",
+        source="def parse_price(text):\n    return 0.0\n",
+        diagnosis="d",
+        attempt=1,
+    )
+    candidate = candidate_from_reply(GOOD_REPLY, failure, current, (previous,))
+    assert candidate.attempt == 2
